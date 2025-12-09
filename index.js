@@ -69,9 +69,49 @@ async function run() {
     const donationInfo = blood_donation.collection('donationInfo');
 
 
-    // userInfo add  in the data base
+    // admin middle wear
+    const adminVeryfiyRole = async (req, res, next) => {
+      const email = req.token_email;
+      const query = { email }
+      const users = await userInfo.findOne(query);
 
-    app.post('/user', async(req, res) => {
+      if (!users || users?.role !== 'Admin') {
+        return res.status(403).send({ message: 'forbiden access' })
+        
+      }
+      next();
+    }
+    // admin or volunteer middle wear
+    const adminORVolunteerVeryfiyRole = async (req, res, next) => {
+      const email = req.token_email;
+      const query = { email }
+      const users = await userInfo.findOne(query);
+
+      if(!users || (users?.role !== 'Admin' && users?.role !== 'Volunteer' )) {
+        return res.status(403).send({ message: 'forbiden access' });
+      }
+      next();
+    }
+
+    // get user role clint side
+
+    app.get('/users/:email/role', veryfiyToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const users = await userInfo.findOne(query);
+
+      res.send({ role: users?.role || 'Donor' });
+    });
+
+    // get all user info admin request
+    app.get('/all-users', veryfiyToken, adminVeryfiyRole, async (req, res) => {
+      const cursor = userInfo.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // userInfo add  in the data base
+    app.post('/user', async (req, res) => {
       const addUserInfo = req.body;
       addUserInfo.role = 'Donor';
       addUserInfo.status = 'Active';
@@ -80,75 +120,86 @@ async function run() {
       const userEmail = req.body.email;
 
       const query = { email: userEmail };
-      const oldeUser = await userInfo.findOne(query)
+      const oldeUser = await userInfo.findOne(query);
 
       if (oldeUser) {
-        return res.send({message:'user alredy create'})
+        return res.send({ message: 'user alredy create' });
       }
 
       const result = await userInfo.insertOne(addUserInfo);
-      res.send(result)
-    })
+      res.send(result);
+    });
 
+    // Admin all donation-request
+    app.get(
+      '/all-blood-donation-request',veryfiyToken,adminORVolunteerVeryfiyRole,async (req, res) => {
+        const cursor = donationInfo.find();
+        const result = await cursor.toArray();
+        res.send(result);
+      }
+    );
 
     // my blood donation request get request
 
-    app.get('/my-donation-request',veryfiyToken, async (req, res) => {
-      
+    app.get('/my-donation-request', veryfiyToken, async (req, res) => {
       const email = req.query.email;
       const query = {};
       if (email) {
         if (!req.token_email) {
-         return  res.status(403).send({message:' forbiden access'})
+          return res.status(403).send({ message: ' forbiden access' });
         }
         query.requester_email = email;
-
       }
       const cursor = donationInfo.find(query);
       const result = await cursor.toArray();
-      res.send(result)
+      res.send(result);
     });
 
-    app.get('/edit/:id',veryfiyToken, async (req, res) => {
+    app.get('/one-donationInfo/:id', veryfiyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await donationInfo.findOne(query);
       res.send(result);
-    })
+    });
 
     // blood donation post request
-    app.post('/blood-donation',veryfiyToken, async(req, res) => {
+    app.post('/blood-donation', veryfiyToken, async (req, res) => {
       const newDonation = req.body;
       newDonation.status = 'pending';
       newDonation.createAt = new Date();
-      // find block user 
+      // find block user
       const requesterEmail = req.body.requester_email;
-      const  query={email:requesterEmail}
+      const query = { email: requesterEmail };
       const findBlockUser = await userInfo.findOne(query);
 
       if (!findBlockUser || findBlockUser.status === 'Blocked') {
-        return res.send({message:'you are blocked plz do not try again'})
+        return res.send({ message: 'you are blocked plz do not try again' });
       }
 
       const result = await donationInfo.insertOne(newDonation);
       res.send(result);
-
-    })
+    });
 
     // blood donation update
 
-    app.patch('/update-data/:id',veryfiyToken, async(req, res) => {
+    app.patch('/update-data/:id', veryfiyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
-      const updateData = req.body
+      const updateData = req.body;
       const update = {
-        $set:updateData
-        
-      }
+        $set: updateData,
+      };
       const result = await donationInfo.updateOne(query, update);
       res.send(result);
-    })
-    
+    });
+
+    // blood donation delete request
+    app.delete('/delete-donation/:id', veryfiyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await donationInfo.deleteOne(query);
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
