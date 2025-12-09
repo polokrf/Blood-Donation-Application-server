@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const admin = require('firebase-admin');
 
 const serviceAccount = require('./blood-donation-applicati-fd3fb-firebase-adminsdk-fbsvc-6c42dc87bc.json');
@@ -34,7 +34,7 @@ const veryfiyToken = async (req, res, next) => {
   }
 
   try {
-    const decoded = await admin.auth().veryfiyToken(token);
+    const decoded = await admin.auth().verifyIdToken(token);
     req.token_email = decoded.email;
 
     next()
@@ -66,6 +66,7 @@ async function run() {
     await client.connect();
     const blood_donation = client.db('blood-server');
     const userInfo = blood_donation.collection('userInfo');
+    const donationInfo = blood_donation.collection('donationInfo');
 
 
     // userInfo add  in the data base
@@ -88,6 +89,66 @@ async function run() {
       const result = await userInfo.insertOne(addUserInfo);
       res.send(result)
     })
+
+
+    // my blood donation request get request
+
+    app.get('/my-donation-request',veryfiyToken, async (req, res) => {
+      
+      const email = req.query.email;
+      const query = {};
+      if (email) {
+        if (!req.token_email) {
+         return  res.status(403).send({message:' forbiden access'})
+        }
+        query.requester_email = email;
+
+      }
+      const cursor = donationInfo.find(query);
+      const result = await cursor.toArray();
+      res.send(result)
+    });
+
+    app.get('/edit/:id',veryfiyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await donationInfo.findOne(query);
+      res.send(result);
+    })
+
+    // blood donation post request
+    app.post('/blood-donation',veryfiyToken, async(req, res) => {
+      const newDonation = req.body;
+      newDonation.status = 'pending';
+      newDonation.createAt = new Date();
+      // find block user 
+      const requesterEmail = req.body.requester_email;
+      const  query={email:requesterEmail}
+      const findBlockUser = await userInfo.findOne(query);
+
+      if (!findBlockUser || findBlockUser.status === 'Blocked') {
+        return res.send({message:'you are blocked plz do not try again'})
+      }
+
+      const result = await donationInfo.insertOne(newDonation);
+      res.send(result);
+
+    })
+
+    // blood donation update
+
+    app.patch('/update-data/:id',veryfiyToken, async(req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updateData = req.body
+      const update = {
+        $set:updateData
+        
+      }
+      const result = await donationInfo.updateOne(query, update);
+      res.send(result);
+    })
+    
 
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
