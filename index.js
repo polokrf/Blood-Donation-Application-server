@@ -123,6 +123,8 @@ async function run() {
       res.send(result);
     });
 
+    
+
     // userInfo add  in the data base
     app.post('/user', async (req, res) => {
       const addUserInfo = req.body;
@@ -142,6 +144,32 @@ async function run() {
       const result = await userInfo.insertOne(addUserInfo);
       res.send(result);
     });
+
+    // users role update 
+    app.patch('/user-role/:id',veryfiyToken,adminVeryfiyRole, async(req, res) => {
+      const id = req.params.id;
+      const updateRole = req.body.role
+      const query = { _id: new ObjectId(id) }
+      const update = {
+        $set:{role:updateRole}
+      }
+
+      const result = await userInfo.updateOne(query, update);
+      res.send(result)
+    })
+    // update status
+    app.patch('/user-status/:id',veryfiyToken, adminVeryfiyRole, async (req, res) => {
+        const id = req.params.id;
+        const updateStatus = req.body.status;
+        const query = { _id: new ObjectId(id) };
+        const update = {
+          $set: { status: updateStatus },
+        };
+
+        const result = await userInfo.updateOne(query, update);
+        res.send(result);
+      }
+    );
 
     // Admin all donation-request
     app.get(
@@ -189,6 +217,16 @@ async function run() {
       res.send(result);
     });
 
+    // all pending donation req
+
+    app.get('/pending-donation', async(req, res) => {
+      const status = req.query.status;
+      const query = { status };
+      const cursor = donationInfo.find(query);
+      const result = await cursor.toArray();
+      res.send(result)
+    })
+
     // blood donation post request
     app.post('/blood-donation', veryfiyToken, async (req, res) => {
       const newDonation = req.body;
@@ -219,6 +257,23 @@ async function run() {
       const result = await donationInfo.updateOne(query, update);
       res.send(result);
     });
+
+    // donation status update 
+    app.patch('/update-status/:id',async (req, res) => {
+      const id = req.params.id;
+      const updateValue=req.body
+      const query = { _id: new ObjectId(id) };
+      const update = {
+        $set: {
+          status: updateValue.status,
+          donor_email: updateValue.email,
+          donor_name:updateValue.name
+
+        }
+      }
+      const result = await donationInfo.updateOne(query, update);
+      res.send(result)
+    })
 
     // blood donation delete request
     app.delete('/delete-donation/:id', veryfiyToken, async (req, res) => {
@@ -298,6 +353,21 @@ async function run() {
     console.log(
       'Pinged your deployment. You successfully connected to MongoDB!'
     );
+
+    // search donor 
+    app.get('/search', (req, res) => {
+      const searchQuery = req.query;
+      
+      const query = {};
+      if (searchQuery) {
+        query.$or = [
+          { blood_group: { $regex: searchText, $options: 'i' } },
+          { district: { $regex: searchText, $options: 'i' } },
+          { upazaila: { $regex: searchText, $options: 'i' } },
+        ];
+        query.role='Donor'
+      }
+    })
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
