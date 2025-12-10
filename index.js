@@ -1,15 +1,19 @@
 const express = require('express');
+require('dotenv').config();
 const cors = require('cors');
+const stripe = require('stripe')(process.env.Payment);
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const admin = require('firebase-admin');
 
 const serviceAccount = require('./blood-donation-applicati-fd3fb-firebase-adminsdk-fbsvc-6c42dc87bc.json');
 
+
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-require('dotenv').config();
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -54,6 +58,14 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+function generateTrackingId() {
+  const prefix = 'PZ'; // your brand or project short code
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+  return `${prefix}-${date}-${random}`;
+}
+
 
 
 app.get('/', (req, res) => {
@@ -67,6 +79,7 @@ async function run() {
     const blood_donation = client.db('blood-server');
     const userInfo = blood_donation.collection('userInfo');
     const donationInfo = blood_donation.collection('donationInfo');
+    const foundInfo = blood_donation.collection('foundInfo');
 
 
     // admin middle wear
@@ -154,6 +167,20 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
+    // recent donation request
+    app.get('/recent-donation', veryfiyToken, async (req, res) => {
+      const email = req.query.email;
+      const query = {};
+      if (email) {
+        if (!req.token_email) {
+          return res.status(403).send({ message: ' forbiden access' });
+        }
+        query.requester_email = email;
+      }
+      const cursor = donationInfo.find(query).sort({createAt:-1}).limit(3);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
 
     app.get('/one-donationInfo/:id', veryfiyToken, async (req, res) => {
       const id = req.params.id;
@@ -200,6 +227,71 @@ async function run() {
       const result = await donationInfo.deleteOne(query);
       res.send(result);
     });
+
+
+    // payment info
+    app.post('/create-checkout-session',veryfiyToken, async (req, res) => {
+      const paymentInfo = req.body;
+      const amount = parseInt(paymentInfo.amount * 100)
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data: {
+              currency: 'USD',
+              unit_amount: amount,
+
+              product_data: {
+                name: paymentInfo.name,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        customer_email: paymentInfo.email,
+        metadata: {
+          founderName: paymentInfo.name,
+          email: paymentInfo.email,
+        },
+        success_url: `${process.env.Bd_Clint}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.Bd_Clint}/dashboard/payment-canceled`,
+      });
+
+      res.send({ url: session.url });
+    });
+
+    app.post('/paymentInfo', veryfiyToken, async (req, res) => {
+      const sessionId = req.query.session_id;
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      console.log(session)
+
+      if (session.payment_status === 'paid') {
+        const TrackingId = generateTrackingId();
+        const totalAmount = parseInt(session.amount_total / 100);
+        const date =new Date()
+        const info = {
+          transaction: session.payment_intent,
+          name: session.metadata.founderName,
+          email: session.customer_email,
+          crd_own_name: session.name,
+          country: session.country,
+          amount_total: totalAmount,
+          paymentAt: date,
+          TrackingId,
+        };
+
+        const transactionId = session.payment_intent;
+        const query = { transaction: transactionId };
+        const findUsers = await foundInfo.findOne(query);
+
+        if (findUsers) {
+          return res.send({ message: 'No duplicate' });
+        }
+        const saveInfo = await foundInfo.insertOne(info);
+        res.send({transactionId:session.payment_intent,TrackingId,saveInfo })
+      }
+    });
+
 
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
