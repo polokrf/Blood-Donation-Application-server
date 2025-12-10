@@ -259,16 +259,30 @@ async function run() {
     });
 
     // donation status update 
-    app.patch('/update-status/:id',async (req, res) => {
+    app.patch('/update-status/:id', async (req, res) => {
       const id = req.params.id;
-      const updateValue=req.body
+      const updateValue = req.body
       const query = { _id: new ObjectId(id) };
       const update = {
         $set: {
           status: updateValue.status,
           donor_email: updateValue.email,
-          donor_name:updateValue.name
+          donor_name: updateValue.name
 
+        }
+      }
+      const result = await donationInfo.updateOne(query, update);
+      res.send(result)
+    });
+
+    // only done accapet status update
+    app.patch('/only-status-update/:id', veryfiyToken, async(req, res) => {
+      const id = req.params.id;
+      const updateStatus = req.body.status
+      const query = { _id: new ObjectId(id) };
+      const update = {
+        $set: {
+          status:updateStatus
         }
       }
       const result = await donationInfo.updateOne(query, update);
