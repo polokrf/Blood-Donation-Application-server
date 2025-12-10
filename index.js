@@ -81,30 +81,28 @@ async function run() {
     const donationInfo = blood_donation.collection('donationInfo');
     const foundInfo = blood_donation.collection('foundInfo');
 
-
     // admin middle wear
     const adminVeryfiyRole = async (req, res, next) => {
       const email = req.token_email;
-      const query = { email }
+      const query = { email };
       const users = await userInfo.findOne(query);
 
       if (!users || users?.role !== 'Admin') {
-        return res.status(403).send({ message: 'forbiden access' })
-        
-      }
-      next();
-    }
-    // admin or volunteer middle wear
-    const adminORVolunteerVeryfiyRole = async (req, res, next) => {
-      const email = req.token_email;
-      const query = { email }
-      const users = await userInfo.findOne(query);
-
-      if(!users || (users?.role !== 'Admin' && users?.role !== 'Volunteer' )) {
         return res.status(403).send({ message: 'forbiden access' });
       }
       next();
-    }
+    };
+    // admin or volunteer middle wear
+    const adminORVolunteerVeryfiyRole = async (req, res, next) => {
+      const email = req.token_email;
+      const query = { email };
+      const users = await userInfo.findOne(query);
+
+      if (!users || (users?.role !== 'Admin' && users?.role !== 'Volunteer')) {
+        return res.status(403).send({ message: 'forbiden access' });
+      }
+      next();
+    };
 
     // get user role clint side
 
@@ -123,7 +121,20 @@ async function run() {
       res.send(result);
     });
 
-    
+    // user profile only own data
+    app.get('/my-profile-data', veryfiyToken, async (req, res) => {
+      const email = req.query.email;
+      const query = {};
+      if (email) {
+        if (!req.token_email) {
+          return res.status(403).send({ message: ' forbiden access' });
+        }
+        query.email = email;
+      }
+      const result = await userInfo.findOne(query);
+
+      res.send(result);
+    });
 
     // userInfo add  in the data base
     app.post('/user', async (req, res) => {
@@ -145,20 +156,35 @@ async function run() {
       res.send(result);
     });
 
-    // users role update 
-    app.patch('/user-role/:id',veryfiyToken,adminVeryfiyRole, async(req, res) => {
+    // users update profile
+    app.patch('/user-update-profile/:id', veryfiyToken, async (req, res) => {
       const id = req.params.id;
-      const updateRole = req.body.role
-      const query = { _id: new ObjectId(id) }
+      const updateStatus = req.body;
+      const query = { _id: new ObjectId(id) };
       const update = {
-        $set:{role:updateRole}
-      }
+        $set: { updateStatus },
+      };
 
       const result = await userInfo.updateOne(query, update);
-      res.send(result)
-    })
+      res.send(result);
+    });
+
+    // users role update
+    app.patch('/user-role/:id',veryfiyToken,adminVeryfiyRole,async (req, res) => {
+        const id = req.params.id;
+        const updateRole = req.body.role;
+        const query = { _id: new ObjectId(id) };
+        const update = {
+          $set: { role: updateRole },
+        };
+
+        const result = await userInfo.updateOne(query, update);
+        res.send(result);
+      }
+    );
+
     // update status
-    app.patch('/user-status/:id',veryfiyToken, adminVeryfiyRole, async (req, res) => {
+    app.patch('/user-status/:id',veryfiyToken,adminVeryfiyRole,async (req, res) => {
         const id = req.params.id;
         const updateStatus = req.body.status;
         const query = { _id: new ObjectId(id) };
@@ -173,7 +199,10 @@ async function run() {
 
     // Admin all donation-request
     app.get(
-      '/all-blood-donation-request',veryfiyToken,adminORVolunteerVeryfiyRole,async (req, res) => {
+      '/all-blood-donation-request',
+      veryfiyToken,
+      adminORVolunteerVeryfiyRole,
+      async (req, res) => {
         const cursor = donationInfo.find();
         const result = await cursor.toArray();
         res.send(result);
@@ -205,7 +234,7 @@ async function run() {
         }
         query.requester_email = email;
       }
-      const cursor = donationInfo.find(query).sort({createAt:-1}).limit(3);
+      const cursor = donationInfo.find(query).sort({ createAt: -1 }).limit(3);
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -219,13 +248,13 @@ async function run() {
 
     // all pending donation req
 
-    app.get('/pending-donation', async(req, res) => {
+    app.get('/pending-donation', async (req, res) => {
       const status = req.query.status;
       const query = { status };
       const cursor = donationInfo.find(query);
       const result = await cursor.toArray();
-      res.send(result)
-    })
+      res.send(result);
+    });
 
     // blood donation post request
     app.post('/blood-donation', veryfiyToken, async (req, res) => {
@@ -258,36 +287,35 @@ async function run() {
       res.send(result);
     });
 
-    // donation status update 
+    // donation status update
     app.patch('/update-status/:id', async (req, res) => {
       const id = req.params.id;
-      const updateValue = req.body
+      const updateValue = req.body;
       const query = { _id: new ObjectId(id) };
       const update = {
         $set: {
           status: updateValue.status,
           donor_email: updateValue.email,
-          donor_name: updateValue.name
-
-        }
-      }
+          donor_name: updateValue.name,
+        },
+      };
       const result = await donationInfo.updateOne(query, update);
-      res.send(result)
+      res.send(result);
     });
 
     // only done accapet status update
-    app.patch('/only-status-update/:id', veryfiyToken, async(req, res) => {
+    app.patch('/only-status-update/:id', veryfiyToken, async (req, res) => {
       const id = req.params.id;
-      const updateStatus = req.body.status
+      const updateStatus = req.body.status;
       const query = { _id: new ObjectId(id) };
       const update = {
         $set: {
-          status:updateStatus
-        }
-      }
+          status: updateStatus,
+        },
+      };
       const result = await donationInfo.updateOne(query, update);
-      res.send(result)
-    })
+      res.send(result);
+    });
 
     // blood donation delete request
     app.delete('/delete-donation/:id', veryfiyToken, async (req, res) => {
@@ -297,11 +325,10 @@ async function run() {
       res.send(result);
     });
 
-
     // payment info
-    app.post('/create-checkout-session',veryfiyToken, async (req, res) => {
+    app.post('/create-checkout-session', veryfiyToken, async (req, res) => {
       const paymentInfo = req.body;
-      const amount = parseInt(paymentInfo.amount * 100)
+      const amount = parseInt(paymentInfo.amount * 100);
       const session = await stripe.checkout.sessions.create({
         line_items: [
           {
@@ -332,12 +359,12 @@ async function run() {
     app.post('/paymentInfo', veryfiyToken, async (req, res) => {
       const sessionId = req.query.session_id;
       const session = await stripe.checkout.sessions.retrieve(sessionId);
-      console.log(session)
+      console.log(session);
 
       if (session.payment_status === 'paid') {
         const TrackingId = generateTrackingId();
         const totalAmount = parseInt(session.amount_total / 100);
-        const date =new Date()
+        const date = new Date();
         const info = {
           transaction: session.payment_intent,
           name: session.metadata.founderName,
@@ -357,10 +384,13 @@ async function run() {
           return res.send({ message: 'No duplicate' });
         }
         const saveInfo = await foundInfo.insertOne(info);
-        res.send({transactionId:session.payment_intent,TrackingId,saveInfo })
+        res.send({
+          transactionId: session.payment_intent,
+          TrackingId,
+          saveInfo,
+        });
       }
     });
-
 
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
@@ -368,20 +398,28 @@ async function run() {
       'Pinged your deployment. You successfully connected to MongoDB!'
     );
 
-    // search donor 
-    app.get('/search', (req, res) => {
-      const searchQuery = req.query;
-      
+    // search donor
+    app.get('/search', async (req, res) => {
+      const searchBlood = req.query.blood_group;
+      const searchDis = req.query.district;
+      const searchUpazila = req.query.upazaila;
+      const searchRole = req.query.role;
+
       const query = {};
-      if (searchQuery) {
+
+      if (searchRole) {
         query.$or = [
-          { blood_group: { $regex: searchText, $options: 'i' } },
-          { district: { $regex: searchText, $options: 'i' } },
-          { upazaila: { $regex: searchText, $options: 'i' } },
+          { blood_group: { $regex: searchBlood, $options: 'i' } },
+          { district: { $regex: searchDis, $options: 'i' } },
+          { upazaila: { $regex: searchUpazila, $options: 'i' } },
+          { role: { $regex: searchRole, $options: 'i' } },
         ];
-        query.role='Donor'
       }
-    })
+
+      const cursor = userInfo.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
