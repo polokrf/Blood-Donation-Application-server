@@ -116,9 +116,22 @@ async function run() {
 
     // get all user info admin request
     app.get('/all-users', veryfiyToken, adminVeryfiyRole, async (req, res) => {
-      const cursor = userInfo.find();
+      const { status, limit, skip } = req.query;
+      
+      
+      const query = {};
+      if (status) {
+        query.status=status
+      }
+      const cursor = userInfo.find(query)
+        .limit(Number(limit))
+        .skip(Number(skip));
       const result = await cursor.toArray();
-      res.send(result);
+      const count = await userInfo .countDocuments(query)
+        
+      
+     
+      res.send(  {result, dataCount:count});
     });
 
     // user profile only own data
@@ -159,10 +172,11 @@ async function run() {
     // users update profile
     app.patch('/user-update-profile/:id', veryfiyToken, async (req, res) => {
       const id = req.params.id;
-      const updateStatus = req.body;
+      const updateUserInfo = req.body;
+      const blood_group= updateUserInfo.blood_group.toUpperCase()
       const query = { _id: new ObjectId(id) };
       const update = {
-        $set: { updateStatus },
+        $set: {...updateUserInfo, blood_group},
       };
 
       const result = await userInfo.updateOne(query, update);
@@ -184,7 +198,11 @@ async function run() {
     );
 
     // update status
-    app.patch('/user-status/:id',veryfiyToken,adminVeryfiyRole,async (req, res) => {
+    app.patch(
+      '/user-status/:id',
+      veryfiyToken,
+      adminVeryfiyRole,
+      async (req, res) => {
         const id = req.params.id;
         const updateStatus = req.body.status;
         const query = { _id: new ObjectId(id) };
@@ -198,31 +216,42 @@ async function run() {
     );
 
     // Admin all donation-request
-    app.get(
-      '/all-blood-donation-request',
-      veryfiyToken,
-      adminORVolunteerVeryfiyRole,
-      async (req, res) => {
-        const cursor = donationInfo.find();
-        const result = await cursor.toArray();
-        res.send(result);
+    app.get('/all-blood-donation-request', veryfiyToken, adminORVolunteerVeryfiyRole, async (req, res) => {
+      
+        const { status ,limit,skip} = req.query;
+        const query = {};
+        if (status) {
+          query.status=status
+        }
+        const cursor = donationInfo
+          .find(query)
+          .limit(Number(limit))
+          .skip(Number(skip));
+      const result = await cursor.toArray();
+      const count = await donationInfo.countDocuments(query);
+        res.send({ result ,countData:count});
       }
     );
 
     // my blood donation request get request
 
     app.get('/my-donation-request', veryfiyToken, async (req, res) => {
-      const email = req.query.email;
+      const {email,status,limit,skip }= req.query;
+      
       const query = {};
       if (email) {
         if (!req.token_email) {
           return res.status(403).send({ message: ' forbiden access' });
         }
         query.requester_email = email;
+        if (status) {
+          query.status = status;
+       }
       }
-      const cursor = donationInfo.find(query);
+      const cursor = donationInfo.find(query).limit(Number(limit)).skip(Number(skip));
       const result = await cursor.toArray();
-      res.send(result);
+      const count = await donationInfo.countDocuments(query);
+      res.send({ result ,countData:count});
     });
     // recent donation request
     app.get('/recent-donation', veryfiyToken, async (req, res) => {
@@ -249,11 +278,12 @@ async function run() {
     // all pending donation req
 
     app.get('/pending-donation', async (req, res) => {
-      const status = req.query.status;
+      const{status,limit,skip} = req.query;
       const query = { status };
-      const cursor = donationInfo.find(query);
+      const cursor = donationInfo.find(query).limit(Number(limit)).skip(Number(skip));
       const result = await cursor.toArray();
-      res.send(result);
+      const count = await donationInfo.countDocuments(query);
+      res.send({ result ,countData:count});
     });
 
     // blood donation post request
@@ -325,6 +355,15 @@ async function run() {
       res.send(result);
     });
 
+    // found info
+    
+    app.get('/fund-user', veryfiyToken, async (req, res) => {
+      const cursor = foundInfo.find();
+      const result = await cursor.toArray();
+      res.send(result)
+    })
+
+
     // payment info
     app.post('/create-checkout-session', veryfiyToken, async (req, res) => {
       const paymentInfo = req.body;
@@ -359,7 +398,15 @@ async function run() {
     app.post('/paymentInfo', veryfiyToken, async (req, res) => {
       const sessionId = req.query.session_id;
       const session = await stripe.checkout.sessions.retrieve(sessionId);
-      console.log(session);
+      
+
+       const transactionId = session.payment_intent;
+       const query = { transaction: transactionId };
+       const findUsers = await foundInfo.findOne(query);
+
+       if (findUsers) {
+         return res.send({ message: 'No duplicate' });
+       }
 
       if (session.payment_status === 'paid') {
         const TrackingId = generateTrackingId();
@@ -376,13 +423,7 @@ async function run() {
           TrackingId,
         };
 
-        const transactionId = session.payment_intent;
-        const query = { transaction: transactionId };
-        const findUsers = await foundInfo.findOne(query);
-
-        if (findUsers) {
-          return res.send({ message: 'No duplicate' });
-        }
+       
         const saveInfo = await foundInfo.insertOne(info);
         res.send({
           transactionId: session.payment_intent,
@@ -391,12 +432,6 @@ async function run() {
         });
       }
     });
-
-    // Send a ping to confirm a successful connection
-    await client.db('admin').command({ ping: 1 });
-    console.log(
-      'Pinged your deployment. You successfully connected to MongoDB!'
-    );
 
     // search donor
     app.get('/search', async (req, res) => {
@@ -420,6 +455,12 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
+
+    // Send a ping to confirm a successful connection
+    await client.db('admin').command({ ping: 1 });
+    console.log(
+      'Pinged your deployment. You successfully connected to MongoDB!'
+    );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
