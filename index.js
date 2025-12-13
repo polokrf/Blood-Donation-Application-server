@@ -456,6 +456,22 @@ async function run() {
       res.send(result);
     });
 
+    app.get('/dashboard-stats',async (req, res) => {
+      const role = 'Donor';
+      const query = { role };
+      const allDonor = await userInfo.countDocuments(query);
+      const allBloodDonation = await donationInfo.countDocuments();
+      const pipeline = [{
+        $group: {
+          _id: null,
+          total : {$sum:'$amount_total'}
+        }
+      }];
+      
+      const totalAmount = await foundInfo.aggregate(pipeline).toArray();
+      res.send({donor:allDonor,request:allBloodDonation,totalAmount})
+    });
+
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
