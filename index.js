@@ -119,7 +119,7 @@ async function run() {
     });
 
     // get all user info admin request
-    app.get('/all-users',  async (req, res) => {
+    app.get('/all-users',veryfiyToken,adminVeryfiyRole,  async (req, res) => {
       const { status, limit, skip } = req.query;
       
       
