@@ -5,8 +5,12 @@ const stripe = require('stripe')(process.env.Payment);
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const admin = require('firebase-admin');
 
-const serviceAccount = require('./blood-donation-applicati-fd3fb-firebase-adminsdk-fbsvc-6c42dc87bc.json');
+// const serviceAccount = require('./blood-donation-applicati-fd3fb-firebase-adminsdk-fbsvc-6c42dc87bc.json');
 
+// const serviceAccount = require("./firebase-admin-key.json");
+
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8');
+const serviceAccount = JSON.parse(decoded);
 
 
 admin.initializeApp({
@@ -75,7 +79,7 @@ app.get('/', (req, res) => {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     const blood_donation = client.db('blood-server');
     const userInfo = blood_donation.collection('userInfo');
     const donationInfo = blood_donation.collection('donationInfo');
@@ -115,7 +119,7 @@ async function run() {
     });
 
     // get all user info admin request
-    app.get('/all-users', veryfiyToken, adminVeryfiyRole, async (req, res) => {
+    app.get('/all-users',  async (req, res) => {
       const { status, limit, skip } = req.query;
       
       
@@ -318,7 +322,7 @@ async function run() {
     });
 
     // donation status update
-    app.patch('/update-status/:id', async (req, res) => {
+    app.patch('/update-status/:id',veryfiyToken,async (req, res) => {
       const id = req.params.id;
       const updateValue = req.body;
       const query = { _id: new ObjectId(id) };
@@ -472,11 +476,11 @@ async function run() {
       res.send({donor:allDonor,request:allBloodDonation,totalAmount})
     });
 
-    // Send a ping to confirm a successful connection
-    await client.db('admin').command({ ping: 1 });
-    console.log(
-      'Pinged your deployment. You successfully connected to MongoDB!'
-    );
+    // // Send a ping to confirm a successful connection
+    // await client.db('admin').command({ ping: 1 });
+    // console.log(
+    //   'Pinged your deployment. You successfully connected to MongoDB!'
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
