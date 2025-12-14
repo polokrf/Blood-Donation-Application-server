@@ -446,13 +446,20 @@ async function run() {
 
        const query = {};
 
-     
-        query.$or = [
-          { blood_group: { $regex: searchBlood, $options: 'i' } },
-          { district: { $regex: searchDis, $options: 'i' } },
-          { upazaila: { $regex: searchUpazila, $options: 'i' } },
+      if (searchBlood) {
+        query.blood_group = { $regex: searchBlood, $options: 'i' };
+      }
+      if (searchDis) {
+        query.district={ $regex: searchDis, $options: 'i' } 
+      }
+       
+      if (searchUpazila) {
+     query.upazaila= { $regex: searchUpazila, $options: 'i' }
+    }
+         
           
-        ];
+         
+        
       
 
       const cursor = userInfo.find(query);
