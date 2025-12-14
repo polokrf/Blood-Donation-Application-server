@@ -439,29 +439,22 @@ async function run() {
 
     // search donor
     app.get('/search', async (req, res) => {
-      const searchBlood = req.query.blood_group;
-      const searchDis = req.query.district;
-      const searchUpazila = req.query.upazaila;
+      const {upazaila,district,blood_group}  = req.query
+      
      
 
        const query = {};
 
       if (searchBlood) {
-        query.blood_group = { $regex: searchBlood, $options: 'i' };
+        query.blood_group = blood_group
       }
       if (searchDis) {
-        query.district={ $regex: searchDis, $options: 'i' } 
+        query.district= district
       }
        
       if (searchUpazila) {
-     query.upazaila= { $regex: searchUpazila, $options: 'i' }
+     query.upazaila= upazaila
     }
-         
-          
-         
-        
-      
-
       const cursor = userInfo.find(query);
       const result = await cursor.toArray();
       res.send(result);
