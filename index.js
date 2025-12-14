@@ -450,11 +450,11 @@ async function run() {
         query.blood_group = { $regex: searchBlood, $options: 'i' };
       }
       if (searchDis) {
-        query.searchDis={ $regex: searchDis, $options: 'i' } 
+        query.district={ $regex: searchDis, $options: 'i' } 
       }
        
       if (searchUpazila) {
-     query.searchUpazila= { $regex: searchUpazila, $options: 'i' }
+     query.upazaila= { $regex: searchUpazila, $options: 'i' }
     }
          
           
