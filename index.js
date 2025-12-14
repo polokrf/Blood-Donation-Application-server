@@ -445,14 +445,14 @@ async function run() {
 
        const query = {role:'Donor',status:'Active'};
 
-      if (searchBlood) {
+      if (blood_group) {
         query.blood_group = blood_group
       }
-      if (searchDis) {
+      if (district) {
         query.district= district
       }
        
-      if (searchUpazila) {
+      if (upazaila) {
      query.upazaila= upazaila
     }
       const cursor = userInfo.find(query);
