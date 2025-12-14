@@ -443,7 +443,7 @@ async function run() {
       
      
 
-       const query = {};
+       const query = {role:'Donor',status:'Active'};
 
       if (searchBlood) {
         query.blood_group = blood_group
