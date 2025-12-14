@@ -442,18 +442,18 @@ async function run() {
       const searchBlood = req.query.blood_group;
       const searchDis = req.query.district;
       const searchUpazila = req.query.upazaila;
-      const searchRole = req.query.role;
+     
 
-      const query = {};
+       const query = {};
 
-      if (searchRole) {
+     
         query.$or = [
           { blood_group: { $regex: searchBlood, $options: 'i' } },
           { district: { $regex: searchDis, $options: 'i' } },
           { upazaila: { $regex: searchUpazila, $options: 'i' } },
-          { role: { $regex: searchRole, $options: 'i' } },
+          
         ];
-      }
+      
 
       const cursor = userInfo.find(query);
       const result = await cursor.toArray();
