@@ -84,6 +84,7 @@ async function run() {
     const userInfo = blood_donation.collection('userInfo');
     const donationInfo = blood_donation.collection('donationInfo');
     const foundInfo = blood_donation.collection('foundInfo');
+    const fedBack = blood_donation.collection('fedBacks');
 
     // admin middle wear
     const adminVeryfiyRole = async (req, res, next) => {
@@ -473,6 +474,19 @@ async function run() {
       const totalAmount = await foundInfo.aggregate(pipeline).toArray();
       res.send({donor:allDonor,request:allBloodDonation,totalAmount})
     });
+
+    // fedBack  Data
+
+    app.get('/fedBack', async (req, res) => {
+      const result = await fedBack.find().toArray();
+      res.send(result)
+    })
+
+    app.post('/fedBack', async (req, res) => {
+      const fedBackData = req.body;
+      const result = await fedBack.insertOne(fedBackData);
+      res.send(result);
+    })
 
     // // Send a ping to confirm a successful connection
     // await client.db('admin').command({ ping: 1 });
