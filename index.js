@@ -368,14 +368,14 @@ async function run() {
       if (order) {
         sortQuery[sort || 'amount_total'] = order === 'asc' ? 1 : -1;
       }
-      const cursor = foundInfo
-        .find()
+      const cursor = foundInfo.find()
         .sort(sortQuery)
         .limit(Number(limit))
         .skip(Number(skip));
 
       const result = await cursor.toArray();
-      res.send(result)
+      const count = await foundInfo.countDocuments()
+      res.send({ count, result });
     })
 
 
