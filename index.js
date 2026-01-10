@@ -363,12 +363,16 @@ async function run() {
     // found info
     
     app.get('/fund-user', veryfiyToken, async (req, res) => {
-      const { sort = 'amount_total', order = 'asc', limit, skip } = req.query;
+      const { sort = 'amount_total', order, limit, skip } = req.query;
       const sortQuery = {};
       if (order) {
         sortQuery[sort || 'amount_total'] = order === 'asc' ? 1 : -1;
       }
-      const cursor = foundInfo.find().sort(sortQuery).limit(limit).skip(skip);
+      const cursor = foundInfo
+        .find()
+        .sort(sortQuery)
+        .limit(Number(limit))
+        .skip(Number(skip));
 
       const result = await cursor.toArray();
       res.send(result)
