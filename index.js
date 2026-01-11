@@ -273,7 +273,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get('/one-donationInfo/:id', veryfiyToken, async (req, res) => {
+    app.get('/one-donationInfo/:id',  async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await donationInfo.findOne(query);
