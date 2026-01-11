@@ -283,9 +283,13 @@ async function run() {
     // all pending donation req
 
     app.get('/pending-donation', async (req, res) => {
-      const{status,limit,skip} = req.query;
+      const { status, limit, skip, sort = 'donation_date', order } = req.query;
       const query = { status };
-      const cursor = donationInfo.find(query).limit(Number(limit)).skip(Number(skip));
+      const sortData = {}
+      if (order) {
+        sortData[sort || 'donation_date']=order==='asc'?1:-1;
+      }
+      const cursor = donationInfo.find(query).sort(sortData).limit(Number(limit)).skip(Number(skip));
       const result = await cursor.toArray();
       const count = await donationInfo.countDocuments(query);
       res.send({ result ,countData:count});
