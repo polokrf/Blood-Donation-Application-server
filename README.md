@@ -74,7 +74,7 @@
 ## 📦 Installation & Setup
 
 ```bash
-git clone https://github.com/polokrf/blood-donation-server.git
+git clone https://github.com/polokrf/Blood-Donation-Application-server.git
 cd blood-donation-server
 npm install
 npm start
